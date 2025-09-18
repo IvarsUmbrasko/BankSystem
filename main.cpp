@@ -2,26 +2,25 @@
 #include <limits>
 #include <string>
 #include <vector>
-
-using namespace std;
+#include <fstream>
 
 class Account {
 private:
-    string _login;
+    std::string _login;
     int _accNum;
     float _balance = 0;
 
 public:
-    float getBalance() {
-        return _balance;
-    }
-
-    string getLogin() {
+    std::string getLogin() {
         return _login;
     }
 
     int getAccNum() {
         return _accNum;
+    }
+
+    float getBalance() {
+        return _balance;
     }
 
     void withdraw(float withdrawAmount) {
@@ -42,24 +41,30 @@ public:
     }
 
     void showInfo() {
-        std::cout << "Your login : " <<_login << std::endl;
+        std::cout << "Your login : " << _login << std::endl;
         std::cout << "Your account number : " << _accNum << std::endl;
         std::cout << "Your current balance : " << getBalance() << std::endl;
     }
 
-    Account(const string &login, int accNum, const float balance) {
+    Account(const std::string &login, int accNum, const float balance) {
         _login = login;
         _accNum = accNum;
         _balance = balance;
     }
+
+    Account(const std::string &login, int accNum) {
+        _login = login;
+        _accNum = accNum;
+    }
 };
 
-int interface() {
+int startInterface() {
     std::cout << "\n";
     std::cout << "---------------------------------------" << std::endl;
-    std::cout << "1. Create new account" << std::endl;
+    std::cout << "1. Create new account"<< std::endl;
     std::cout << "2. Login" << std::endl;
     std::cout << "3. Exit" << std::endl;
+    std::cout << "4. Fetch all accounts" << std::endl;
     std::cout << "---------------------------------------" << std::endl;
     std::cout << "Choice : ";
     int choice = 0;
@@ -99,9 +104,81 @@ void loggedInInterface(Account &accVec) {
     } while (choice != 4);
 }
 
+bool checkAccountExistence(Account acc) {
+    std::string text;
+    int lineCnt = 0;
+    bool halfVerification = false;
+    std::ifstream OutputFile("../BankSystem/login.txt");
 
+    while (getline(OutputFile, text)) {
+        if (text.empty()) {
+            lineCnt = 0;
+            continue;
+        }
 
-void newAccountInterface(std::vector<Account> &accVec) {
+        lineCnt++;
+
+        switch (lineCnt) {
+            case 1:
+                if (text.compare(acc.getLogin()) == 0) {
+                    halfVerification = true;
+                }
+                break;
+            case 2:
+                int fileAccNum = std::stoi(text);
+                if (fileAccNum == acc.getAccNum() && halfVerification) {
+                    return true;
+                }
+                lineCnt = 0;
+                break;
+        }
+    }
+    return false;
+}
+
+void fetchAllAccounts(std::vector<Account> &accVec) {
+    std::string text;
+    std::string login;
+    int accNum {0};
+    float balance {0};
+    std::ifstream OutputFile("../BankSystem/login.txt");
+    int lineCnt {0};
+
+    while (getline(OutputFile, text)) {
+        if (text.empty()) {
+            lineCnt = 0;
+            continue;
+        }
+
+        lineCnt++;
+
+        if (lineCnt == 1 ) {
+            login = text;
+        } else if (lineCnt == 2) {
+            accNum = std::stoi(text);
+        } else if (lineCnt == 3) {
+            balance = std::stof(text);
+            accVec.push_back(Account(login, accNum, balance));
+        }
+    }
+
+    for (int i = 0; i<accVec.size(); ++i) {
+        std::cout << accVec[i].getLogin() << std::endl;
+        std::cout << accVec[i].getAccNum() << std::endl;
+        std::cout << accVec[i].getBalance() << std::endl;
+    }
+}
+
+void writeAccountInFile(Account acc) {
+    std::ofstream InputFile("../BankSystem/login.txt", std::fstream::app);
+    InputFile << acc.getLogin() << "\n";
+    InputFile << acc.getAccNum() << "\n";
+    InputFile << acc.getBalance() << "\n";
+    std::cout << "New account was saved successfully";
+    InputFile.close();
+}
+
+void registrationInterface(std::vector<Account> &accVec) {
     std::cout << "-------------Account creation--------------------------" << std::endl;
     std::cout << "Enter login : ";
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -116,42 +193,57 @@ void newAccountInterface(std::vector<Account> &accVec) {
     float balance;
     std::cin >> balance;
 
-    std::cout << "---------------------------------------" << std::endl;
-
     Account acc(login, accNum, balance);
-    accVec.push_back(acc);
+    if (!checkAccountExistence(acc)) {
+        writeAccountInFile(acc);
+        accVec.push_back(acc);
+    } else {
+        std::cout << "Account exists" << std::endl;
+    }
+    std::cout << "---------------------------------------" << std::endl;
 }
 
-void loginInterface(vector<Account> &accVec) {
-    std::cout << "-------------------Login---------------------";
+void loginInterface(std::vector<Account> &accVec) {
+    std::cout << "-------------------Login---------------------" << std::endl;
     std::cout << "Enter login : ";
-    string login;
-    getline(cin >> ws, login);
+    std::string login;
+    std::getline(std::cin >> std::ws, login);
     std::cout << "Enter account number : ";
     int accNum;
     std::cin >> accNum;
     std::cout << "---------------------------------------";
 
-    for (int i = 0; i < accVec.size(); ++i) {
-        if (login.compare(accVec[i].getLogin()) == 0 && accNum == accVec[i].getAccNum()) {
-            loggedInInterface(accVec[i]);
-        }
+    Account acc(login, accNum);
+
+    if (checkAccountExistence(acc)) {
+        loggedInInterface(acc);
+    } else {
+        std::cout << "Account exists" << std::endl;
     }
+
+    // for (int i = 0; i < accVec.size(); ++i) {
+    //     if (login.compare(accVec[i].getLogin()) == 0 && accNum == accVec[i].getAccNum()) {
+    //         loggedInInterface(accVec[i]);
+    //     }
+    // }
 }
 
 
 int main() {
-    vector<Account> accVec;
+    std::vector<Account> accVec;
+
     while (true) {
-        switch (interface()) {
+        switch (startInterface()) {
             case 1:
-                newAccountInterface(accVec);
+                registrationInterface(accVec);
                 break;
             case 2:
                 loginInterface(accVec);
                 break;
             case 3:
                 return 0;
+            case 4:
+                fetchAllAccounts(accVec);
         }
     }
 }
